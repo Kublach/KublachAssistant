@@ -1,2 +1,0 @@
-py -m pip install pillow pystray-ce
-py -m PyInstaller --noconsole --onefile --icon app.ico --add-data "characters;characters" --add-data "app.ico;." --hidden-import pystray._win32 --name "Kublach Assistant" assistant.py
