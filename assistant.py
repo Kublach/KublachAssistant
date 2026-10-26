@@ -79,6 +79,7 @@ def sync_resources():
     except Exception as e:
         print("Greška pri kopiranju resursa:", e)
 DEFAULT_CHARACTERS = ["bubu", "dudu"]
+DEFAULT_LANGUAGE = "hr"     # jezik koji se koristi dok korisnik sam ne odabere drugi
 IMG_EXT = (".gif", ".png", ".webp")
 SND_EXT = (".wav", ".mp3", ".ogg")
 TRANSP = "#ff00fe"
@@ -341,7 +342,7 @@ class App:
         tk.Button(root, text="Show now", width=10, command=self.show).grid(row=4, column=2, **pad)
         self.status = tk.Label(root, text="", fg="#666")
         self.status.grid(row=5, column=0, columnspan=3, **pad)
-        tk.Label(root, text="Kublach, 2026.").grid(row=6, column=0, sticky="e", **pad)
+        tk.Label(root, text="Kublach, 2026., v2.0").grid(row=6, column=0, sticky="e", **pad)
         tk.Button(root, text="Exit", width=10, command=self.quit).grid(row=6, column=2, sticky="e", **pad)
 
         self.update_lang_combo()
@@ -454,8 +455,9 @@ class App:
     @property
     def lang(self):
         """Stvarni jezik: željeni ako ga lik ima, inače prvi dostupni."""
-        if self.lang_pref in self.langs:
-            return self.lang_pref
+        for l in (self.lang_pref, DEFAULT_LANGUAGE):
+            if l in self.langs:
+                return l
         return self.langs[0] if self.langs else None
 
     def update_lang_combo(self):
