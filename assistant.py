@@ -77,7 +77,7 @@ def sync_resources():
         if (RES_DIR / "app.ico").exists():
             shutil.copy2(RES_DIR / "app.ico", ICON_FILE)
     except Exception as e:
-        print("Greška pri kopiranju resursa:", e)
+        print("Resource error:", e)
 DEFAULT_CHARACTERS = ["bubu", "dudu"]
 DEFAULT_LANGUAGE = "hr"     # jezik koji se koristi dok korisnik sam ne odabere drugi
 IMG_EXT = (".gif", ".png", ".webp")
@@ -213,7 +213,7 @@ def play_sound(path):
         elif winsound and path.suffix.lower() == ".wav":
             winsound.PlaySound(str(path), winsound.SND_FILENAME | winsound.SND_ASYNC)
     except Exception as e:
-        print("Greška sa zvukom:", e)
+        print("Sound error:", e)
 
 
 # ---------- skočni prozor ----------
@@ -297,6 +297,7 @@ class App:
         self.lang_pref = cfg.get("language")      # željeni jezik (pamti se i kad ga lik nema)
         self.langs = get_languages(self.char)
         self.random_enabled = cfg.get("random", False)
+        self.start_in_tray = cfg.get("start_in_tray", False)
         self.running = False
         self.last_scene = None
         self.popup = None
@@ -310,6 +311,7 @@ class App:
         self.v_interval_max = tk.IntVar(value=cfg.get("interval_max", 60))
         self.v_random = tk.BooleanVar(value=self.random_enabled)
         self.v_lang = tk.StringVar()
+        self.v_tray = tk.BooleanVar(value=self.start_in_tray)
 
         pad = {"padx": 10, "pady": 4}
         tk.Label(root, text="Character:", font=("Segoe UI", 10, "bold")).grid(row=0, column=0, sticky="w", **pad)
@@ -342,7 +344,8 @@ class App:
         tk.Button(root, text="Show now", width=10, command=self.show).grid(row=4, column=2, **pad)
         self.status = tk.Label(root, text="", fg="#666")
         self.status.grid(row=5, column=0, columnspan=3, **pad)
-        tk.Label(root, text="Kublach, 2026., v2.0").grid(row=6, column=0, sticky="e", **pad)
+        tk.Label(root, text="Kublach, 2026., v2.1").grid(row=6, column=1, sticky="e", **pad)
+        tk.Checkbutton(root, text="Pokreni u trayu", variable=self.v_tray,command=lambda: self.set_start_in_tray(self.v_tray.get())).grid(row=6, column=0, columnspan=1, sticky="w", **pad)
         tk.Button(root, text="Exit", width=10, command=self.quit).grid(row=6, column=2, sticky="e", **pad)
 
         self.update_lang_combo()
@@ -357,7 +360,8 @@ class App:
         self.update_status()
         self.poll_queue()
         self.auto_rescan()
-
+        if self.start_in_tray and self.icon:
+            root.withdraw()
     # ----- tray -----
     def setup_tray(self):
         if not pystray:
@@ -383,6 +387,8 @@ class App:
                              checked=lambda item: self.sound_enabled),
             pystray.MenuItem(lambda item: "Pause" if self.running else "Continue",
                              cmd(lambda: self.stop() if self.running else self.start())),
+            pystray.MenuItem("Start in tray", cmd(lambda: self.set_start_in_tray(not self.start_in_tray)),
+                             checked=lambda item: self.start_in_tray),
             pystray.MenuItem("Settings", cmd(self.show_window)),
             pystray.MenuItem("Exit", cmd(self.quit)),
         )
@@ -412,7 +418,7 @@ class App:
             try:
                 self.q.get_nowait()()
             except Exception as e:
-                print("Greška:", e)
+                print("Error:", e)
         self.root.after(100, self.poll_queue)
 
     # ----- postavke -----
@@ -426,10 +432,15 @@ class App:
         try:
             DATA_DIR.mkdir(parents=True, exist_ok=True)
             CONFIG_FILE.write_text(json.dumps({
-                "character": self.char, "interval": self.v_interval.get(),
-                "show_secs": self.v_show.get(), "sound": self.sound_enabled,
-                "language": self.lang_pref, "random": self.random_enabled,
-                "interval_max": self.v_interval_max.get()}), encoding="utf-8")
+                "character": self.char,
+                "interval": self.v_interval.get(),
+                "show_secs": self.v_show.get(),
+                "sound": self.sound_enabled,
+                "language": self.lang_pref,
+                "random": self.random_enabled,
+                "interval_max": self.v_interval_max.get(),
+                "start_in_tray": self.start_in_tray,
+            }), encoding="utf-8")
         except Exception:
             pass
 
@@ -487,7 +498,13 @@ class App:
         else:
             self.save_config()
         self.refresh_tray()
-
+        
+    def set_start_in_tray(self, on):
+        self.start_in_tray = bool(on)
+        self.v_tray.set(self.start_in_tray)
+        self.save_config()
+        self.refresh_tray()
+        
     def set_char(self, c):
         self.char = c
         self.v_char.set(c)
